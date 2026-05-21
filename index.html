@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DROPA</title>
+  <link rel="manifest" href="data:application/json,{}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;color:#fff}
+    .app{width:100%;max-width:430px;height:100vh;height:100dvh;margin:0 auto;position:relative;overflow:hidden;background:#000}
+
+    /* === PAGES === */
+    .page{display:none;height:100%;width:100%}
+    .page.active{display:block}
+
+    /* === FEED === */
+    .feed{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}
+    .feed::-webkit-scrollbar{display:none}
+
+    /* === SLIDE === */
+    .slide{height:100vh;height:100dvh;scroll-snap-align:start;position:relative;overflow:hidden}
+
+    /* === CAROUSEL (horizontal) === */
+    .carousel{width:100%;height:100%;overflow-x:scroll;scroll-snap-type:x mandatory;display:flex;scrollbar-width:none}
+    .carousel::-webkit-scrollbar{display:none}
+    .carousel-img{min-width:100%;height:100%;object-fit:cover;scroll-snap-align:start;display:block;flex-shrink:0}
+
+    /* Dots */
+    .dots{position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:6px}
+    .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.4);transition:all .3s}
+    .dot.active{background:#fff;width:18px;border-radius:3px}
+
+    /* Gradient */
+    .slide-gradient{position:absolute;bottom:0;left:0;right:0;height:55%;background:linear-gradient(transparent,rgba(0,0,0,.88));pointer-events:none;z-index:1}
+
+    /* === TOP BAR === */
+    .top-bar{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:50;padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(rgba(0,0,0,.5),transparent)}
+    .logo{font-size:26px;font-weight:900;letter-spacing:-.5px;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+    .top-tabs{display:flex;gap:18px}
+    .top-tab{background:none;border:none;color:rgba(255,255,255,.45);font-size:15px;font-weight:600;cursor:pointer;text-shadow:0 1px 4px rgba(0,0,0,.5);padding-bottom:4px}
+    .top-tab.active{color:#fff;border-bottom:2px solid #fff}
+
+    /* === INFO === */
+    .info{position:absolute;bottom:78px;left:14px;right:76px;z-index:10}
+    .info-price{font-size:30px;font-weight:900;text-shadow:0 2px 10px rgba(0,0,0,.6);letter-spacing:-.5px}
+    .info-title{font-size:15px;font-weight:600;margin-top:3px;text-shadow:0 1px 6px rgba(0,0,0,.5);line-height:1.3}
+    .info-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+    .tag{padding:4px 10px;background:rgba(255,255,255,.13);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:12px;font-size:11px;font-weight:600}
+    .tag.new{background:rgba(99,102,241,.3);color:#c7d2fe}
+    .tag.used{background:rgba(34,197,94,.25);color:#86efac}
+
+    .seller-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+    .s-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);flex-shrink:0}
+    .s-name{font-size:14px;font-weight:700;cursor:pointer}
+    .s-stats{font-size:11px;color:rgba(255,255,255,.55)}
+    .follow-btn{margin-left:auto;padding:5px 14px;border-radius:8px;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;flex-shrink:0}
+    .follow-btn.following{background:#fff;color:#000;border-color:#fff}
+
+    .ship-tag{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;color:rgba(255,255,255,.7);background:rgba(255,255,255,.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:5px 10px;border-radius:14px}
+
+    /* === ACTIONS === */
+    .actions{position:absolute;right:10px;bottom:150px;z-index:10;display:flex;flex-direction:column;align-items:center;gap:16px}
+    .action{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent}
+    .action-c{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .15s,background .2s}
+    .action-c:active{transform:scale(.85)}
+    .action.liked .action-c{background:rgba(255,71,87,.35)}
+    .action.saved .action-c{background:rgba(245,158,11,.35)}
+    .action-l{font-size:10px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+    /* === BUY === */
+    .buy-bar{position:absolute;bottom:14px;left:14px;right:14px;z-index:10}
+    .buy-btn{width:100%;height:50px;border:none;border-radius:25px;background:#fff;color:#000;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .12s;display:flex;align-items:center;justify-content:center;gap:6px}
+    .buy-btn:active{transform:scale(.96)}
+
+    /* === BOTTOM NAV === */
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:100;display:flex;background:rgba(0,0,0,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.06);padding-bottom:env(safe-area-inset-bottom,4px)}
+    .nav-i{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0;border:none;background:transparent;cursor:pointer;color:rgba(255,255,255,.35);font-size:9px;font-weight:600}
+    .nav-i.active{color:#fff}
+    .nav-ic{font-size:21px}
+    .nav-sell{background:rgba(255,255,255,.1);border-radius:10px;margin:3px;color:#fff!important}
+
+    /* === OVERLAY / SHEETS === */
+    .overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;max-width:430px;margin:0 auto;animation:fadeIn .2s}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .sheet{background:#151515;width:100%;border-radius:20px 20px 0 0;padding:22px 18px 30px;animation:sheetUp .3s ease}
+    @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .sheet h3{font-size:18px;font-weight:700}
+    .sheet p{color:#777;font-size:12px;margin:4px 0 14px;line-height:1.4}
+    .s-row{display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid #222;font-size:13px;color:#999}
+    .s-row.total{border-top:2px solid #fff;color:#fff;font-weight:700;font-size:15px;margin-top:4px}
+    .pay-btn{width:100%;height:52px;border:none;border-radius:26px;background:#22c55e;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px}
+    .pay-btn:active{transform:scale(.97)}
+    .cancel-btn{width:100%;height:38px;border:none;background:transparent;color:#555;font-size:13px;cursor:pointer;margin-top:6px}
+
+    /* === SUCCESS === */
+    .success-page{position:fixed;inset:0;z-index:300;background:#000;max-width:430px;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px;text-align:center;animation:fadeIn .3s}
+    .success-page .emoji{font-size:64px}
+    .success-page h2{font-size:22px;font-weight:800}
+    .success-page p{color:#777;font-size:13px;line-height:1.5}
+    .success-btn{width:100%;max-width:260px;height:46px;border:none;border-radius:23px;background:#fff;color:#000;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+
+    /* === SAVED PAGE === */
+    .page-scroll{height:100%;overflow-y:auto;padding-top:65px;padding-bottom:65px}
+    .page-title{padding:8px 16px 14px;font-size:22px;font-weight:800}
+    .saved-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;padding:0 2px}
+    .saved-item{aspect-ratio:3/4;overflow:hidden;cursor:pointer;position:relative;border-radius:4px}
+    .saved-item img{width:100%;height:100%;object-fit:cover}
+    .saved-item-price{position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,.7);font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px}
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 40px;text-align:center;color:rgba(255,255,255,.4);gap:10px}
+    .empty .e-icon{font-size:44px}
+    .empty p{font-size:13px;line-height:1.5}
+
+    /* === PROFILE PAGE === */
+    .prof-header{display:flex;flex-direction:column;align-items:center;padding:10px 20px 20px;gap:10px}
+    .prof-avatar{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+    .prof-name{font-size:18px;font-weight:700}
+    .prof-bio{font-size:12px;color:rgba(255,255,255,.5);text-align:center}
+    .prof-stats{display:flex;gap:28px;text-align:center;margin-top:4px}
+    .prof-num{font-size:18px;font-weight:700}
+    .prof-lbl{font-size:10px;color:rgba(255,255,255,.4)}
+    .prof-follow{margin-top:8px;width:100%;max-width:280px;height:40px;border-radius:20px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+    .prof-follow.following{background:rgba(255,255,255,.1);color:#fff}
+    .prof-follow:not(.following){background:#fff;color:#000}
+    .prof-products{padding:8px 2px}
+    .prof-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px}
+    .prof-item{aspect-ratio:3/4;overflow:hidden;cursor:pointer;border-radius:4px}
+    .prof-item img{width:100%;height:100%;object-fit:cover}
+
+    /* === SEARCH PAGE === */
+    .search-bar{margin:0 14px 14px;display:flex;align-items:center;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;gap:8px}
+    .search-bar input{background:none;border:none;color:#fff;font-size:14px;width:100%;outline:none}
+    .search-bar input::placeholder{color:rgba(255,255,255,.3)}
+    .cats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px}
+    .cat-card{aspect-ratio:16/9;border-radius:12px;overflow:hidden;position:relative;cursor:pointer}
+    .cat-card img{width:100%;height:100%;object-fit:cover}
+    .cat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 40%,rgba(0,0,0,.7))}
+    .cat-card span{position:absolute;bottom:10px;left:12px;z-index:2;font-size:14px;font-weight:700}
+
+    /* === MY PROFILE === */
+    .my-prof-header{display:flex;flex-direction:column;align-items:center;padding:10px 20px 20px;gap:10px}
+    .my-avatar{width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#ff6b6b,#ee5a24);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+    .menu-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:10px;cursor:pointer;border:none;background:rgba(255,255,255,.04);width:calc(100% - 28px);margin:2px 14px;text-align:left;font-size:14px;color:#fff}
+    .menu-item:active{background:rgba(255,255,255,.1)}
+    .menu-icon{font-size:18px;width:26px;text-align:center}
+    .menu-arrow{margin-left:auto;color:rgba(255,255,255,.2);font-size:16px}
+
+    /* === BACK BTN === */
+    .back-btn{position:absolute;top:14px;left:14px;z-index:55;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar" id="topBar">
+    <div class="logo">DROPA</div>
+    <div class="top-tabs">
+      <button class="top-tab">Siguiendo</button>
+      <button class="top-tab active">Para ti</button>
+    </div>
+  </div>
+
+  <!-- PAGE: FEED -->
+  <div class="page active" id="pageFeed">
+    <div class="feed" id="feed"></div>
+  </div>
+
+  <!-- PAGE: SEARCH -->
+  <div class="page" id="pageSearch">
+    <div class="page-scroll">
+      <div class="page-title">Explorar</div>
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" placeholder="Buscar prendas, marcas, vendedores...">
+      </div>
+      <div class="cats-grid" id="catsGrid"></div>
+    </div>
+  </div>
+
+  <!-- PAGE: SAVED -->
+  <div class="page" id="pageSaved">
+    <div class="page-scroll">
+      <div class="page-title">Guardados</div>
+      <div id="savedContent"></div>
+    </div>
+  </div>
+
+  <!-- PAGE: MY PROFILE -->
+  <div class="page" id="pageProfile">
+    <div class="page-scroll">
+      <div class="my-prof-header">
+        <div class="my-avatar">BV</div>
+        <div class="prof-name">@benja.vj</div>
+        <div class="prof-bio">Santiago, Chile</div>
+        <div class="prof-stats">
+          <div><div class="prof-num">0</div><div class="prof-lbl">Ventas</div></div>
+          <div><div class="prof-num">0</div><div class="prof-lbl">Compras</div></div>
+          <div><div class="prof-num">5.0</div><div class="prof-lbl">Rating</div></div>
+        </div>
+      </div>
+      <button class="menu-item"><span class="menu-icon">📦</span>Mis pedidos<span class="menu-arrow">›</span></button>
+      <button class="menu-item"><span class="menu-icon">👕</span>Mis publicaciones<span class="menu-arrow">›</span></button>
+      <button class="menu-item"><span class="menu-icon">⭐</span>Mis resenas<span class="menu-arrow">›</span></button>
+      <button class="menu-item"><span class="menu-icon">💳</span>Metodos de pago<span class="menu-arrow">›</span></button>
+      <button class="menu-item"><span class="menu-icon">📍</span>Direcciones<span class="menu-arrow">›</span></button>
+      <button class="menu-item"><span class="menu-icon">⚙️</span>Configuracion<span class="menu-arrow">›</span></button>
+    </div>
+  </div>
+
+  <!-- PAGE: SELLER PROFILE -->
+  <div class="page" id="pageSeller" style="position:relative">
+    <button class="back-btn" onclick="goPage('pageFeed')">←</button>
+    <div class="page-scroll" id="sellerContent"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-i active" data-page="pageFeed"><span class="nav-ic">🏠</span>Inicio</button>
+    <button class="nav-i" data-page="pageSearch"><span class="nav-ic">🔍</span>Buscar</button>
+    <button class="nav-i nav-sell"><span class="nav-ic">＋</span>Vender</button>
+    <button class="nav-i" data-page="pageSaved"><span class="nav-ic">🏷️</span>Guardados</button>
+    <button class="nav-i" data-page="pageProfile"><span class="nav-ic">👤</span>Perfil</button>
+  </nav>
+
+  <!-- BUY SHEET -->
+  <div class="overlay" id="buySheet" style="display:none" onclick="closeBuy()">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <h3>Confirmar compra</h3>
+      <p>Pago seguro con MercadoPago. Tu dinero se libera al confirmar recepcion.</p>
+      <div class="s-row"><span id="bName">—</span><span id="bPrice">—</span></div>
+      <div class="s-row"><span>Envio BlueExpress</span><span>$3.990</span></div>
+      <div class="s-row total"><span>Total</span><span id="bTotal">—</span></div>
+      <button class="pay-btn" id="payBtn" onclick="confirmBuy()">Pagar</button>
+      <button class="cancel-btn" onclick="closeBuy()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success-page" id="successPage" style="display:none">
+    <div class="emoji">🎉</div>
+    <h2>Compra exitosa!</h2>
+    <p>Tu pago esta protegido por MercadoPago. El vendedor tiene 3 dias para enviar por BlueExpress.</p>
+    <button class="success-btn" onclick="closeSuccess()">Volver al feed</button>
+  </div>
+
+</div>
+
+<script>
+const SHIP = 3990;
+const fmt = n => '$' + n.toLocaleString('es-CL');
+
+const sellers = {
+  kicks_stgo: { name: '@kicks_stgo', avatar: 'KS', color: 'linear-gradient(135deg,#f59e0b,#ef4444)', rating: 4.9, sales: 312, bio: 'Sneakers originales · Santiago · Envios a todo Chile', products: [] },
+  streetwear_cl: { name: '@streetwear_cl', avatar: 'SW', color: 'linear-gradient(135deg,#6366f1,#ec4899)', rating: 4.8, sales: 187, bio: 'Streetwear & Urban · Lo mejor en polerones y chaquetas', products: [] },
+  flaw_street: { name: '@flaw.street', avatar: 'FS', color: 'linear-gradient(135deg,#8b5cf6,#06b6d4)', rating: 5.0, sales: 421, bio: 'Flaw Street — Rue Santiago · EST. 2018 · Marca chilena', products: [] },
+};
+
+const products = [
+  { id:1, title:'Nike SB Dunk Low "Strange Love"', price:189990, size:'41 EUR', cond:'VNDS', condClass:'used', imgs:['img_web/zapa_01.jpg','img_web/zapa_01b.jpg','img_web/zapa_01c.jpg','img_web/zapa_01d.jpg'], seller:'kicks_stgo', likes:247, cat:'Zapatillas' },
+  { id:2, title:'Poleron Red Bull Racing F1 2024', price:34990, size:'M / L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_01.jpg','img_web/poleron_02.jpg'], seller:'streetwear_cl', likes:168, cat:'Polerones' },
+  { id:3, title:'Poleron Flaw Street "Reserved" Negro', price:42990, size:'M / L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_06.jpg','img_web/poleron_06b.jpg','img_web/poleron_06c.jpg'], seller:'flaw_street', likes:312, cat:'Polerones' },
+  { id:4, title:'Air Jordan 5 Retro "Cement"', price:159990, size:'42 EUR', cond:'VNDS', condClass:'used', imgs:['img_web/zapa_02.jpg','img_web/zapa_02b.jpg','img_web/zapa_02c.jpg'], seller:'kicks_stgo', likes:134, cat:'Zapatillas' },
+  { id:5, title:'Chaqueta Nike Windbreaker Navy', price:29990, size:'M / L', cond:'Nuevo', condClass:'new', imgs:['img_web/chaqueta_01.jpg'], seller:'streetwear_cl', likes:89, cat:'Chaquetas' },
+  { id:6, title:'Poleron Flaw Street "Reserved" Cafe', price:42990, size:'M / L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_07.jpg','img_web/poleron_07b.jpg'], seller:'flaw_street', likes:278, cat:'Polerones' },
+  { id:7, title:'Yeezy Slide "Onyx" Black', price:89990, size:'42 EUR', cond:'Nuevo c/ caja', condClass:'new', imgs:['img_web/zapa_03.jpg','img_web/zapa_03b.jpg','img_web/zapa_03c.jpg','img_web/zapa_03d.jpg'], seller:'kicks_stgo', likes:203, cat:'Zapatillas' },
+  { id:8, title:'Poleron Nike SB Logo', price:27990, size:'M / L', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_05.jpg','img_web/poleron_05b.jpg'], seller:'streetwear_cl', likes:156, cat:'Polerones' },
+  { id:9, title:'Poleron Flaw Street "Signature" Beige', price:44990, size:'M / L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_08.jpg','img_web/poleron_08b.jpg'], seller:'flaw_street', likes:345, cat:'Polerones' },
+  { id:10, title:'Poleron Nike "Just Do It" Vintage', price:24990, size:'L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_03.jpg'], seller:'streetwear_cl', likes:112, cat:'Polerones' },
+  { id:11, title:'Poleron Nike Classic Swoosh Negro', price:22990, size:'M / L / XL', cond:'Nuevo', condClass:'new', imgs:['img_web/poleron_04.jpg'], seller:'streetwear_cl', likes:98, cat:'Polerones' },
+];
+
+// Assign products to sellers
+products.forEach(p => sellers[p.seller].products.push(p.id));
+
+const state = { liked: new Set(), saved: new Set(), following: new Set(), page: 'pageFeed' };
+
+// === BUILD FEED ===
+function buildFeed() {
+  const feed = document.getElementById('feed');
+  feed.innerHTML = products.map((p, idx) => {
+    const s = sellers[p.seller];
+    return `
+    <div class="slide">
+      <div class="carousel" id="car${p.id}" onscroll="updateDots(${p.id})">
+        ${p.imgs.map(img => `<img class="carousel-img" src="${img}" alt="${p.title}">`).join('')}
+      </div>
+      ${p.imgs.length > 1 ? `<div class="dots" id="dots${p.id}">${p.imgs.map((_, i) => `<div class="dot${i===0?' active':''}"></div>`).join('')}</div>` : ''}
+      <div class="slide-gradient"></div>
+      <div class="info">
+        <div class="info-price">${fmt(p.price)}</div>
+        <div class="info-title">${p.title}</div>
+        <div class="info-tags">
+          <span class="tag">${p.size}</span>
+          <span class="tag ${p.condClass}">${p.cond}</span>
+        </div>
+        <div class="seller-row">
+          <div class="s-avatar" style="background:${s.color}">${s.avatar}</div>
+          <div>
+            <div class="s-name" onclick="showSeller('${p.seller}')">${s.name}</div>
+            <div class="s-stats">⭐ ${s.rating} · ${s.sales} ventas</div>
+          </div>
+          <button class="follow-btn${state.following.has(p.seller)?' following':''}" onclick="toggleFollow(this,'${p.seller}')">${state.following.has(p.seller)?'Siguiendo':'Seguir'}</button>
+        </div>
+        <div class="ship-tag">📦 BlueExpress · ${fmt(SHIP)}</div>
+      </div>
+      <div class="actions">
+        <button class="action${state.liked.has(p.id)?' liked':''}" onclick="toggleLike(this,${p.id},${p.likes})">
+          <div class="action-c">${state.liked.has(p.id)?'❤️':'🤍'}</div>
+          <span class="action-l">${p.likes+(state.liked.has(p.id)?1:0)}</span>
+        </button>
+        <button class="action${state.saved.has(p.id)?' saved':''}" onclick="toggleSave(this,${p.id})">
+          <div class="action-c">${state.saved.has(p.id)?'🔖':'🏷️'}</div>
+          <span class="action-l">${state.saved.has(p.id)?'Guardado':'Guardar'}</span>
+        </button>
+        <button class="action"><div class="action-c">💬</div><span class="action-l">Preguntar</span></button>
+        <button class="action"><div class="action-c">↗️</div><span class="action-l">Compartir</span></button>
+      </div>
+      <div class="buy-bar">
+        <button class="buy-btn" onclick="openBuy(${p.id})">Comprar · ${fmt(p.price)}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// === CAROUSEL DOTS ===
+function updateDots(id) {
+  const car = document.getElementById('car' + id);
+  const dots = document.getElementById('dots' + id);
+  if (!car || !dots) return;
+  const idx = Math.round(car.scrollLeft / car.clientWidth);
+  dots.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+
+// === INTERACTIONS ===
+function toggleLike(btn, id, base) {
+  const on = state.liked.has(id) ? (state.liked.delete(id), false) : (state.liked.add(id), true);
+  btn.classList.toggle('liked', on);
+  btn.querySelector('.action-c').textContent = on ? '❤️' : '🤍';
+  btn.querySelector('.action-l').textContent = base + (on ? 1 : 0);
+}
+
+function toggleSave(btn, id) {
+  const on = state.saved.has(id) ? (state.saved.delete(id), false) : (state.saved.add(id), true);
+  btn.classList.toggle('saved', on);
+  btn.querySelector('.action-c').textContent = on ? '🔖' : '🏷️';
+  btn.querySelector('.action-l').textContent = on ? 'Guardado' : 'Guardar';
+}
+
+function toggleFollow(btn, sid) {
+  const on = state.following.has(sid) ? (state.following.delete(sid), false) : (state.following.add(sid), true);
+  btn.classList.toggle('following', on);
+  btn.textContent = on ? 'Siguiendo' : 'Seguir';
+  document.querySelectorAll(`.follow-btn`).forEach(b => {
+    if (b.dataset && b !== btn) return;
+  });
+}
+
+// === BUY FLOW ===
+function openBuy(id) {
+  const p = products.find(x => x.id === id);
+  document.getElementById('bName').textContent = p.title;
+  document.getElementById('bPrice').textContent = fmt(p.price);
+  document.getElementById('bTotal').textContent = fmt(p.price + SHIP);
+  document.getElementById('payBtn').textContent = 'Pagar ' + fmt(p.price + SHIP);
+  document.getElementById('buySheet').style.display = 'flex';
+}
+function closeBuy() { document.getElementById('buySheet').style.display = 'none'; }
+function confirmBuy() { closeBuy(); document.getElementById('successPage').style.display = 'flex'; }
+function closeSuccess() { document.getElementById('successPage').style.display = 'none'; }
+
+// === NAVIGATION ===
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-i').forEach(n => n.classList.toggle('active', n.dataset.page === id));
+  const showTop = id === 'pageFeed';
+  document.getElementById('topBar').style.display = showTop ? 'flex' : 'none';
+  state.page = id;
+  if (id === 'pageSaved') renderSaved();
+}
+
+document.querySelectorAll('.nav-i[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => goPage(btn.dataset.page));
+});
+
+// === SAVED PAGE ===
+function renderSaved() {
+  const el = document.getElementById('savedContent');
+  if (state.saved.size === 0) {
+    el.innerHTML = '<div class="empty"><div class="e-icon">🏷️</div><p>Aun no has guardado prendas.<br>Scrollea el feed y guarda lo que te guste.</p></div>';
+    return;
+  }
+  const items = products.filter(p => state.saved.has(p.id));
+  el.innerHTML = '<div class="saved-grid">' + items.map(p => `
+    <div class="saved-item" onclick="goPage('pageFeed')">
+      <img src="${p.imgs[0]}" alt="${p.title}">
+      <div class="saved-item-price">${fmt(p.price)}</div>
+    </div>
+  `).join('') + '</div>';
+}
+
+// === SELLER PROFILE ===
+function showSeller(sid) {
+  const s = sellers[sid];
+  const prods = products.filter(p => p.seller === sid);
+  const el = document.getElementById('sellerContent');
+  el.innerHTML = `
+    <div class="prof-header">
+      <div class="prof-avatar" style="background:${s.color}">${s.avatar}</div>
+      <div class="prof-name">${s.name}</div>
+      <div class="prof-bio">${s.bio}</div>
+      <div class="prof-stats">
+        <div><div class="prof-num">${prods.length}</div><div class="prof-lbl">Productos</div></div>
+        <div><div class="prof-num">${s.sales}</div><div class="prof-lbl">Ventas</div></div>
+        <div><div class="prof-num">${s.rating}</div><div class="prof-lbl">Rating</div></div>
+      </div>
+      <button class="prof-follow${state.following.has(sid)?' following':''}" onclick="toggleFollow(this,'${sid}')">${state.following.has(sid)?'Siguiendo':'Seguir'}</button>
+    </div>
+    <div class="prof-products">
+      <div class="prof-grid">
+        ${prods.map(p => `<div class="prof-item" onclick="goPage('pageFeed')"><img src="${p.imgs[0]}" alt="${p.title}"></div>`).join('')}
+      </div>
+    </div>
+  `;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('pageSeller').classList.add('active');
+  document.getElementById('topBar').style.display = 'none';
+}
+
+// === SEARCH PAGE ===
+function buildSearch() {
+  const cats = [
+    { name: 'Zapatillas', img: 'img_web/zapa_01.jpg' },
+    { name: 'Polerones', img: 'img_web/poleron_01.jpg' },
+    { name: 'Chaquetas', img: 'img_web/chaqueta_01.jpg' },
+    { name: 'Streetwear', img: 'img_web/poleron_06.jpg' },
+    { name: 'Nike', img: 'img_web/poleron_04.jpg' },
+    { name: 'Jordan', img: 'img_web/zapa_02.jpg' },
+  ];
+  document.getElementById('catsGrid').innerHTML = cats.map(c => `
+    <div class="cat-card" onclick="goPage('pageFeed')">
+      <img src="${c.img}" alt="${c.name}">
+      <span>${c.name}</span>
+    </div>
+  `).join('');
+}
+
+// === INIT ===
+buildFeed();
+buildSearch();
+</script>
+</body>
+</html>
